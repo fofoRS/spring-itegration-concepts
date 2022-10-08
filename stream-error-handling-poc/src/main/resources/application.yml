@@ -1,0 +1,38 @@
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  cloud:
+    function:
+      definition: "initTransaction;transactionInitiatedHandler;transactionFailureAudit;"
+    stream:
+      output-bindings: "initTransaction;transactionMessageFailure"
+      bindings:
+        initTransaction-out-0:
+          destination: transaction-events
+        transactionInitiatedHandler-in-0:
+          destination: transaction-events
+          group: transaction.service
+          consumer:
+            max-attempts: 1
+        transactionMessageFailure-out-0:
+          destination: transaction-failure-events
+          content-type: application/json
+        transactionFailureAudit-in-0:
+          destination: transaction-failure-events
+          group: transaction.service
+      rabbit:
+        bindings:
+          transactionInitiatedHandler-in-0:
+            consumer:
+              auto-bind-dlq: true
+              dlq-ttl: 100
+              dlq-dead-letter-exchange:
+          transactionMessageFailure-out-0:
+            producer:
+              routingKeyExpression:  "'transaction.init.rejected'"
+          transactionFailureAudit-in-0:
+            consumer:
+              bindingRoutingKey: "transaction.*.rejected"
+
+
+
